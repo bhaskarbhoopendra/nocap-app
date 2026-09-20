@@ -1,0 +1,63 @@
+{
+  "expo": {
+    "name": "Nocap",
+    "slug": "nocap",
+    "version": "0.1.0",
+    "scheme": "nocap",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#1d2027"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.nocap.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1d2027"
+      },
+      "package": "com.nocap.app",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.POST_NOTIFICATIONS"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-asset",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Nocap uses your camera to capture proof for your streaks."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Nocap uses your photo library so you can attach proof from existing photos."
+        }
+      ],
+      "expo-font",
+      "./plugins/withAndroidAbiSplit",
+      "./plugins/withKotlinStdlibPin"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "d2ee19b2-fbac-4d09-98c8-c89c72441dbf"
+      }
+    },
+    "owner": "bhoopendra3126"
+  }
+}

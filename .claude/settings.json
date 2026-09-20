@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path // empty' | { read -r f; case \"$f\" in *.ts|*.tsx) cd /Users/bhoopendrabhaskar/Downloads/nocap-app || exit 0; lint_out=$(npx eslint --fix \"$f\" 2>&1); lint_status=$?; tsc_out=$(npx tsc --noEmit 2>&1); tsc_status=$?; if [ $lint_status -ne 0 ] || [ $tsc_status -ne 0 ]; then reason=$(printf 'ESLint:\\n%s\\n\\nTypeScript:\\n%s' \"$lint_out\" \"$tsc_out\"); jq -n --arg reason \"$reason\" '{decision:\"block\", reason:$reason}'; fi ;; esac; }",
+            "timeout": 60,
+            "statusMessage": "Running ESLint + TypeScript check..."
+          }
+        ]
+      }
+    ]
+  }
+}
