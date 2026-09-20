@@ -15,6 +15,9 @@ const ICON_MAP = {
   arrow_back: "arrow-back",
   arrow_back_ios_new: "arrow-back-ios-new",
   arrow_forward: "arrow-forward",
+  // Material Symbols' `arrow_outward` has no MaterialIcons counterpart;
+  // `north-east` is the same diagonal out-arrow glyph in the bundled set.
+  arrow_outward: "north-east",
   auto_awesome: "auto-awesome",
   auto_fix_high: "auto-fix-high",
   badge: "badge",

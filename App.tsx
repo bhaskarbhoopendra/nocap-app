@@ -21,6 +21,7 @@ import { useTaskNotificationPress } from "@/hooks/useTaskNotificationPress";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import AccountProfileScreen from "@/screens/AccountProfileScreen";
 import CustomBuilderScreen from "@/screens/CustomBuilderScreen";
+import ForgotPasswordScreen from "@/screens/ForgotPasswordScreen";
 import LoginScreen from "@/screens/LoginScreen";
 import OnboardingScreen from "@/screens/OnboardingScreen";
 import ProgramsScreen from "@/screens/ProgramsScreen";
@@ -68,9 +69,9 @@ function Gate() {
   const { theme, loading: themeLoading } = useTheme();
   const { profile, loading: sessionLoading } = useSession();
   const [onboarded, setOnboarded] = useState<boolean | null>(null);
-  // Both of these screens render in front of the navigator (a user this far
-  // in has no session-backed routes yet), so this pair swaps between them.
-  const [showReturningLogin, setShowReturningLogin] = useState(false);
+  // These screens render in front of the navigator (a user this far in has
+  // no session-backed routes yet), so this is what swaps between them.
+  const [preAuthScreen, setPreAuthScreen] = useState<"welcome" | "login" | "forgot">("welcome");
 
   const loading = themeLoading || sessionLoading || !theme;
 
@@ -114,12 +115,21 @@ function Gate() {
   const needsOnboarding = onboarded === false ? false : profile.username.startsWith("nocapper_");
 
   if (needsOnboarding) {
-    return showReturningLogin ? (
-      <ReturningLoginScreen onBack={() => setShowReturningLogin(false)} />
-    ) : (
+    if (preAuthScreen === "login") {
+      return (
+        <ReturningLoginScreen
+          onBack={() => setPreAuthScreen("welcome")}
+          onForgotPassword={() => setPreAuthScreen("forgot")}
+        />
+      );
+    }
+    if (preAuthScreen === "forgot") {
+      return <ForgotPasswordScreen onBack={() => setPreAuthScreen("login")} />;
+    }
+    return (
       <OnboardingScreen
         onDone={() => setOnboarded(false)}
-        onLogIn={() => setShowReturningLogin(true)}
+        onLogIn={() => setPreAuthScreen("login")}
       />
     );
   }

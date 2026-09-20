@@ -11,6 +11,8 @@ interface ReturningLoginScreenProps {
   // welcome/onboarding screen — this screen sits in front of the navigator
   // (see App.tsx's Gate), so there's no navigation prop to fall back on.
   onBack: () => void;
+  // "Forgot?" opens the account-recovery screen.
+  onForgotPassword: () => void;
 }
 
 // Google's brand mark, drawn rather than bundled as an asset. Its four
@@ -48,7 +50,10 @@ function GoogleMark({ size = 20 }: { size?: number }) {
  * are plain Views rather than no-op Pressables so they don't advertise a
  * tap that does nothing.
  */
-export default function ReturningLoginScreen({ onBack }: ReturningLoginScreenProps) {
+export default function ReturningLoginScreen({
+  onBack,
+  onForgotPassword,
+}: ReturningLoginScreenProps) {
   const insets = useSafeAreaInsets();
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
@@ -198,9 +203,11 @@ export default function ReturningLoginScreen({ onBack }: ReturningLoginScreenPro
                   <Text className="font-label-md text-label-md font-semibold tracking-wide text-on-surface">
                     Master Password
                   </Text>
-                  <Text className="font-label-md text-label-md font-semibold tracking-wide text-primary">
-                    Forgot?
-                  </Text>
+                  <Pressable onPress={onForgotPassword} hitSlop={8} className="active:opacity-70">
+                    <Text className="font-label-md text-label-md font-semibold tracking-wide text-primary">
+                      Forgot?
+                    </Text>
+                  </Pressable>
                 </View>
                 <View
                   className="flex-row items-center rounded-xl border bg-surface-container-lowest"

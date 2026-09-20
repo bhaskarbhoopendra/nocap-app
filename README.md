@@ -1,119 +1,189 @@
 # Nocap
 
-A proof-based consistency app. Not another checkbox habit tracker — you back up your
-consistency with real proof (photo, timed focus session, or self-check), build a streak,
-earn XP, and unlock your way onto a leaderboard.
+**A proof-based consistency app.** Not another checkbox habit tracker — you don't get to
+tick a box and call it done. You back every day up with real proof (a monitored focus
+timer, a photo, or an honest self-check), and only a fully-verified day extends your
+streak. Build enough of a streak and you unlock a public leaderboard where everyone
+ranked has done the same.
 
-This is the **first working slice**: anonymous onboarding (username + generated avatar),
-a dynamic theme pulled live from Supabase, and a dashboard with a streak card and a
-locked/unlocked leaderboard preview. The template/program builder, proof submission flow,
-and AI goal-planning feature are the next slices — see **What's next** at the bottom.
+Built with React Native (Expo) + Supabase.
+
+---
+
+## What it actually looks like
+
+### Getting in — no email, no password
+
+You're in the app in about ten seconds. Supabase signs the device in anonymously, a DB
+trigger creates your profile, and you pick a vibe + handle. Returning users can log in
+instead, with a magic-link recovery path if they've lost the password.
+
+| Welcome (anonymous start) | Returning user login | Password recovery |
+|---|---|---|
+| ![Welcome](docs/screenshots/welcome.png) | ![Login](docs/screenshots/login.png) | ![Forgot password](docs/screenshots/forgot-password.png) |
+
+The handle field checks availability live against the DB as you type, and validates
+length/characters before it ever hits the network.
+
+### Picking something to be accountable to
+
+With no active program, Today becomes a launchpad: browse curated blueprints, or open one
+to see its full curriculum — real duration, pace, workload split, and every day's proof
+blocks with their XP values — before committing.
+
+| Today (nothing running) | Program library | Template detail |
+|---|---|---|
+| ![Today empty](docs/screenshots/today-empty.png) | ![Programs](docs/screenshots/programs.png) | ![Template detail](docs/screenshots/template-detail.png) |
+
+Starting a program is gated to **one active program at a time** — enforced by a partial
+unique index in Postgres, not just UI logic.
+
+### The daily loop
+
+Once a program is running, Today shows exactly that day's proof blocks. The day advances
+on its own: it's computed as `today − start_date` every time the screen opens, against
+your device's local midnight. No cron job, no counter to increment.
+
+| Today (active program) | Submitting proof |
+|---|---|
+| ![Today active](docs/screenshots/today-active.png) | ![Proof timer](docs/screenshots/proof-timer.png) |
+
+Each block is one of three proof types:
+
+- **`timer`** — a monitored focus session. The clock is DB-backed (`running_since` +
+  `elapsed_seconds`), so it survives the app being killed, and it **auto-stops exactly at
+  target** rather than racking up hours of real time if you walk away. A local
+  notification fires when time's up; tapping it deep-links straight back to that task,
+  where you can complete it or extend by 15/30/60 minutes.
+- **`photo`** — a timestamped snap. Photo blocks require *both* the timer reaching target
+  *and* a captured image before Complete unlocks.
+- **`self_check`** — an honest log, no timer.
+
+Completing every block for the day is what extends the streak — not one of them. That's
+the "N of 3 tasks verified" counter on the lock-in card.
+
+There's also an **End Early with Dignity** option on every timer: your time is still
+recorded, nothing is wiped, no shame copy.
+
+### Ranks and identity
+
+| Leaderboard | Profile |
+|---|---|
+| ![Ranks](docs/screenshots/ranks.png) | ![Profile](docs/screenshots/profile.png) |
+
+The leaderboard is **earned, not given**. You only appear once
+`current_streak >= 7` **or** `total_xp >= 500` (`LEADERBOARD_UNLOCK_STREAK_DAYS` /
+`LEADERBOARD_UNLOCK_XP` in `src/services/programService.ts`). Until then you see your real
+progress toward eligibility and a "Pending" card instead of a rank — the DB views
+themselves filter on `profiles.leaderboard_unlocked`, so an unearned rank can't leak
+through the API either.
+
+Guests stay guests until they choose otherwise. "Secure My Streak" upgrades an anonymous
+session to a real email account **in place** — Supabase keeps the same user id, so every
+program, task log, streak and XP carries over with nothing to migrate.
+
+---
 
 ## Stack
 
-- React Native + TypeScript (Expo) — Android & iOS from one codebase
-- Supabase — Postgres, anonymous auth, row-level security, realtime-ready
+- **React Native + TypeScript (Expo SDK 52)** — one codebase, Android + iOS
+- **NativeWind** — Tailwind-style utility classes, tokens mirroring the design system
+- **Supabase** — Postgres, anonymous auth, row-level security, DB-computed leaderboard views
+- **react-native-notify-kit** — local notifications for timer completion
 
-## 1. Set up Supabase
+---
 
-1. Create a free project at [supabase.com](https://supabase.com).
-2. In your project, open the **SQL Editor** and run the migration file at
-   `supabase/migrations/0001_init.sql` (paste its full contents and run it). This creates
-   every table, the leaderboard views, RLS policies, and seeds the default theme.
-3. Go to **Authentication → Providers** and make sure **Anonymous Sign-Ins** is enabled
-   (Supabase supports this natively — it's what lets people use the app with zero signup).
-4. Go to **Project Settings → API** and copy your **Project URL** and **anon public key**.
+## Running it
 
-## 2. Configure the app
+### 1. Supabase
+
+1. Create a project at [supabase.com](https://supabase.com).
+2. In the **SQL Editor**, run every migration in `supabase/migrations/` **in order**
+   (`0001_init.sql` → `0010_task_progress.sql`). `0001` creates the schema, RLS policies
+   and leaderboard views; the rest add the dual scheduling model, seed the built-in
+   templates, and add task progress tracking.
+3. **Authentication → Providers** → enable **Anonymous Sign-Ins**.
+4. **Authentication → URL Configuration** → add `nocap://auth-callback` to **Redirect
+   URLs** (this is what lets email confirmation and password recovery deep-link back into
+   the app).
+5. **Project Settings → API** → copy your **Project URL** and **anon public key**.
+
+### 2. Configure
 
 ```bash
-cd nocap-app
 cp .env.example .env
 ```
-
-Edit `.env`:
 
 ```
 EXPO_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
 EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-public-key
 ```
 
-## 3. Install & run
+### 3. Run
+
+This app uses native modules (notifications, camera), so **Expo Go won't work** — you need
+a development build:
 
 ```bash
 npm install
-npx expo start
+npx expo run:android     # or: npx expo run:ios
 ```
 
-Scan the QR code with **Expo Go** on your phone, or press `a` / `i` for an Android/iOS
-emulator (same as before — see the earlier roadmap app's README for emulator setup details
-if you need a refresher).
+Subsequent JS-only changes just need `npx expo start --dev-client`.
 
-## What happens on first launch
+```bash
+npm run typecheck        # tsc --noEmit
+npm run lint             # eslint
+```
 
-1. The app silently signs the device in **anonymously** via Supabase — no form, no email.
-2. A DB trigger auto-creates a `profiles` row with a placeholder username
-   (`nocapper_xxxxxxxx`).
-3. The app detects the placeholder username and shows the **onboarding screen**: pick an
-   avatar (color/shape combo, no photo upload needed) and a real username.
-4. From then on, the dashboard shows their streak, XP, and a leaderboard preview — visible
-   but greyed out and locked until they hit **7-day streak OR 500 XP** (tunable in
-   `src/services/leaderboardService.ts`).
+---
 
 ## Project structure
 
 ```
-nocap-app/
-├── App.tsx                        entry point, session/theme gating
-├── supabase/migrations/0001_init.sql   full DB schema, RLS, seed theme
-├── src/
-│   ├── lib/supabase.ts            Supabase client init
-│   ├── types/database.ts          TS types mirroring the SQL schema
-│   ├── services/
-│   │   ├── authService.ts         anonymous sign-in, upgrade to real account
-│   │   ├── themeService.ts        fetch active theme from DB
-│   │   └── leaderboardService.ts  leaderboard queries + unlock logic
-│   ├── hooks/SessionContext.tsx   app-wide auth/profile state
-│   ├── theme/
-│   │   ├── ThemeContext.tsx       app-wide dynamic theme state
-│   │   └── avatarPresets.ts       generated-avatar color/shape options
-│   ├── components/Avatar.tsx      renders an avatar from its seed
-│   └── screens/
-│       ├── OnboardingScreen.tsx   username + avatar picker
-│       └── DashboardScreen.tsx    streak card + leaderboard preview
+src/
+├── components/          reusable UI (Avatar, Icon, GlowOrb, CircularProgressRing…)
+├── screens/
+│   ├── OnboardingScreen.tsx        anonymous start: vibe + handle
+│   ├── ReturningLoginScreen.tsx    returning user login
+│   ├── ForgotPasswordScreen.tsx    magic-link recovery
+│   ├── TodayScreen/                today's blocks, or the "pick a pathway" launchpad
+│   ├── ProofSubmission/            timer / photo / self-check submission
+│   ├── ProgramsScreen.tsx          template library
+│   ├── TemplateDetailScreen.tsx    curriculum + start program
+│   ├── RanksScreen.tsx             leaderboard + eligibility
+│   └── AccountProfileScreen.tsx    profile, stats, guest→real upgrade
+├── services/            Supabase calls, one file per domain (pure functions, typed returns)
+├── hooks/               SessionContext, deep links, header height
+├── theme/               design tokens, avatar looks, presentation maps
+└── types/database.ts    TS types mirroring the SQL schema
+
+supabase/migrations/     schema, RLS, leaderboard views, seeded templates
+plugins/                 Expo config plugins (ABI split, Kotlin stdlib pin)
 ```
 
-## Changing the theme without a rebuild
+Conventions for contributing are in [`CLAUDE.md`](CLAUDE.md) — folder layout, the service
+layer's read-fallback vs. write-throw error convention, and styling rules.
 
-The whole point of the `themes` table: to change the app's colors, just update the active
-row in Supabase — no code change, no app store resubmission.
+---
 
-```sql
-update themes set tokens = jsonb_set(tokens, '{gradientStart}', '"#00e0c6"') where is_active = true;
-```
+## Built vs. next
 
-Reopen the app and the new color is live. To add a whole new theme and switch to it:
+**Working today:** anonymous onboarding, returning login + recovery screens, template
+library with seeded built-in programs, starting a program, the full daily proof loop
+(timer/photo/self-check with DB-backed timing, auto-stop, local notifications and deep
+links), streak + XP rollup, earned leaderboard with eligibility gating, guest→real account
+upgrade with email confirmation.
 
-```sql
-insert into themes (name, is_active, tokens) values ('winter_drop', false, '{...}'::jsonb);
-update themes set is_active = false where name != 'winter_drop';
-update themes set is_active = true where name = 'winter_drop';
-```
+**Next:**
 
-(The unique index on `is_active = true` means only one theme can be active at a time —
-the second update above is required before the third will succeed.)
-
-## What's next
-
-These are designed into the schema already but not wired into the UI yet:
-
-- **Template picker + custom builder** — browsing built-in templates (`templates` table,
-  `source = 'builtin'`) and building your own flexible day/block structure.
-- **Proof submission flow** — the actual photo capture / timer session / self-check UI
-  that writes to `task_logs` and updates streak + XP on the profile and program.
-- **AI goal-planning** — the guided intake → LLM-generated template flow, writing into
-  `ai_plan_requests` and generating real `templates`/`template_days`/`template_blocks` rows.
-- **Real account upgrade prompt** — triggering `upgradeToRealAccount()` in
-  `authService.ts` right when `checkAndUnlockLeaderboard()` flips a user's status.
-- **Per-template leaderboard screen** — `getTemplateLeaderboard()` is already built in
-  `leaderboardService.ts`, just needs a screen and category picker.
+- **Set New Password screen** — the recovery flow's landing screen isn't built yet, so a
+  reset link currently has nowhere to complete.
+- **Sign-in logic** — the login screen is UI-only; `authService` can upgrade an anonymous
+  session but has no `signInWithPassword` path yet.
+- **Supabase Storage for photos** — proof photos are currently local URIs, not uploaded.
+- **AI plan generation** — the intake → generated-template flow (`ai_plan_requests` table
+  exists, nothing writes to it yet).
+- **Custom program builder** — the builder screen exists but doesn't persist templates.
+- **Background/tab-switch detection** — the "zero tab switching" enforcement the timer
+  copy promises isn't actually detected yet.
